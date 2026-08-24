@@ -38,11 +38,27 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
+      # `publish = false` in Cargo.toml holds the crate back while it is still a
+      # stub (wdpkr-core-6fa.15 flips it). Checked here rather than letting
+      # `cargo publish` refuse, so a held-back crate is a skipped release and not
+      # a red run on every push to main.
+      - name: Check if publishing is enabled
+        id: enabled
+        run: |
+          if grep -qE '^publish\s*=\s*false' Cargo.toml; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Cargo.toml sets publish = false — skipping release"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check if tag exists
         id: check
         run: |
           TAG="v$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
+          if [ "${{ steps.enabled.outputs.enabled }}" != "true" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
             echo "Tag $TAG already exists, skipping release"
           else
