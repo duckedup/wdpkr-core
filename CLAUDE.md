@@ -70,16 +70,26 @@ current `main` (which catches the PR that is green alone but broken combined),
 and merges it by squash once every required check passes. Nobody babysits it, and
 nothing merges red.
 
-Required checks — all six of CI, on the PR *and* on the queue's temporary ref:
-`fmt`, `clippy`, `test`, `release`, `Miri`, `No store backend`.
+Required checks — all five of these, on the PR *and* on the queue's temporary
+ref: `fmt`, `clippy`, `test`, `release`, `No store backend`.
+
+`Miri` is **not** required. It still runs on every PR, but it is advisory: it
+interprets MIR, so its runtime tracks the size of the test suite, and it skips
+`merge_group` so a queue entry never waits on it. Read it, don't be gated by it.
 
 **Adding a required check and adding its `merge_group:` trigger are one change,
 never two.** A queued PR builds on a `gh-readonly-queue/**` ref; a workflow that
 owns a required check but does not list `merge_group:` under `on:` never reports
 there, and the entry stalls until it is ejected. The queue looks broken when it is
-really just waiting. For the same reason, narrow work with a per-step
-`if:`, never a job-level one — a job skipped outright is exactly the check that
-never reports.
+really just waiting. For the same reason, narrow a *required* job's work with a
+per-step `if:`, never a job-level one — a job skipped outright is exactly the
+check that never reports.
+
+The rule runs in reverse when retiring a check: drop it from the ruleset's
+required list **first**, then stop it running on `merge_group`. Do it the other
+way round and every entry stalls on a check that can no longer report. Only a
+non-required job may carry a job-level `if:` — which is exactly how `Miri`
+skips the queue.
 
 Review is a human's call, not a gate: `required_approving_review_count` is 0, so
 the queue is what enforces correctness. Ask for review when the change deserves
@@ -187,9 +197,13 @@ interprets MIR (Rust's mid-level IR) and cannot execute FFI calls.
 - Creates reqwest `Client` directly (not via mocks) — system TLS FFI
 
 **Do NOT ignore** tests that use mock implementations (`MockEmbedder`,
-`MockVectorStore`, `MockSummarizer`) — these run under Miri. Miri runs in CI as
-a separate job; if nightly breaks Miri temporarily, that job fails but won't
-block the main `check` job.
+`MockVectorStore`, `MockSummarizer`) — these run under Miri.
+
+Miri runs in CI as its own job on pull requests, and is **not** a required
+check: a red Miri never blocks a merge, whether the cause is real UB or just a
+broken nightly. Treat a failure as a bug to chase, not a gate to satisfy — and
+since nothing enforces it, actually read it. It does not run on the merge
+queue.
 
 ## Architecture Overview
 
