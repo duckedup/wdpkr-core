@@ -85,19 +85,41 @@ Review is a human's call, not a gate: `required_approving_review_count` is 0, so
 the queue is what enforces correctness. Ask for review when the change deserves
 it; don't wait on it to land routine work.
 
-### Beads state rides along in a PR
+### Issue state never lands on main
 
-Creating or closing an issue rewrites `.beads/issues.jsonl`, and there is no
-direct push to land it. **Fold that export into the next feature PR** — the
-pattern nidus follows — rather than opening a PR for the issue tracker alone.
-Two consequences worth knowing:
+The issue database is a Dolt database under `.beads/` — **local and gitignored**.
+It is shared by pushing to `refs/dolt/data` on `origin`, this repo itself, not a
+separate service. So **`bd dolt push` is as load-bearing as `git push`**: without
+it your issue changes exist on your machine only, and no PR carries them. `just
+bd-sync` (pull then push) is the tracker half of finishing a session; `just pr`
+already runs it.
 
-- `bd dolt push` is *not* blocked by any of this. It writes `refs/dolt/data`, not
-  a branch, so the issue database reaches origin immediately; the committed JSONL
-  is a convenience mirror for fresh clones (`bd init --from-jsonl`) and is allowed
-  to lag by a PR.
-- Don't leave the export uncommitted at the end of a session. If nothing else is
-  in flight, carry it in with whatever lands next, and say so in the handoff.
+What *is* tracked in git is only the handful of config files that let a fresh
+clone find that database: `.beads/config.yaml`, `.beads/metadata.json`,
+`.beads/.gitignore`, `.beads/hooks/`. Everything else under `.beads/` is runtime.
+
+**Never let the JSONL export become tracked.** `.beads/issues.jsonl` is a local
+viewer/backup artifact — gitignored, with `export.git-add: false`. A tracked
+export is rewritten from whichever branch's local database happens to commit it,
+so any branch can silently revert another's closes; nidus hit exactly that. With
+a merge queue rebasing entries against a moving `main`, a tracked export is worse
+than useless. The Dolt ref is the only shared state.
+
+**In a fresh clone, run `just bd-setup`** — it reads the tracked config, recovers
+the database from `refs/dolt/data`, and wires the remote. Needs the `dolt` CLI
+(`brew install dolt`); `bd` alone can push but cannot clone. Safe to re-run: an
+existing database is left untouched, because it may hold unpushed work.
+
+It is deliberately **not** `bd bootstrap`, and never `bd init`. Bootstrap cannot
+reach this repo's own `refs/dolt/data` and leaves a fresh clone with an *empty*
+tracker and no error naming the cause; the "recovery" it then offers would
+force-push nothing over everyone's issues. `bd init` mints a new identity and can
+do the same. **If you ever see a `bd dolt push --force` prompt, stop.**
+
+**Close the ticket yourself when the PR merges — nothing auto-closes.** A
+`Closes wdpkr-core-abc` line in a PR body is documentation; GitHub cannot close a
+bead. Run `bd close <id>` and `just bd-sync` as part of shipping, and confirm the
+merged diff actually finishes the issue before you do.
 
 ## What this repo is
 
