@@ -86,9 +86,24 @@ check-consumer NAME:
 
 # Initialize beads issue tracking for this project
 bd-init:
+    #!/usr/bin/env bash
+    set -euo pipefail
     bd init --reinit-local --prefix wdpkr-core
     git config beads.role contributor
     chmod 700 .beads
+    # Point the Dolt remote at this repo's git remote. Without this step
+    # `bd dolt push` — step 4 of the session protocol in CLAUDE.md — silently
+    # skips ("No remote is configured"), and the issue database never leaves the
+    # machine. The transport is a custom git ref, refs/dolt/data on origin, which
+    # is why the URL is the git remote rewritten as git+ssh://.
+    url=$(git remote get-url origin | sed -E 's#^git@([^:]+):#git+ssh://git@\1/#')
+    bd dolt remote add origin "$url"
+    bd dolt push
+
+# Push the beads issue database to origin's refs/dolt/data (session protocol
+# step 4). Separate from `git push`: the issues live in Dolt, not in the commit.
+bd-push:
+    bd dolt push
 
 # Remove all build artifacts
 clean:
