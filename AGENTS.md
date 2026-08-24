@@ -41,7 +41,10 @@ bd show <id>          # Read issue details + dependencies
 1. `git checkout main && git pull`
 2. `git checkout -b <issue-id>`
 3. Implement with tests — run `just ci` before committing
-4. If the public API changed, build both consumers against this checkout (see below)
+4. If the change touches `.rs`, bump `version` in `Cargo.toml` — every Rust
+   change ships a release (see CLAUDE.md § *Every Rust change bumps the
+   version*). If the public API changed, also build both consumers against this
+   checkout (see below)
 5. `git commit` with emoji-prefix message + `Co-Authored-By` trailer
 6. `git push -u origin <issue-id>`
 7. `gh pr create --fill`

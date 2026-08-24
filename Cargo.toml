@@ -1,6 +1,6 @@
 [package]
 name = "wdpkr-core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.96"
 description = "Core indexing and retrieval engine behind wdpkr: repo walking, tree-sitter chunking, LLM summarization, embedding, and the VectorStore abstraction — backend-agnostic."
