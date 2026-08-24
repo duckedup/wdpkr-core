@@ -49,6 +49,42 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
+## Landing code: branch → PR → merge queue
+
+**`main` is protected. Nothing is pushed to it directly** — this overrides step 4
+of the session protocol above, whose bare `git push` no longer applies to code.
+The ruleset rejects direct pushes and force-pushes, so a session that tries one
+fails at the push.
+
+```bash
+git checkout -b <issue-id>          # one branch per issue or bundled epic
+just ci                             # green locally before you ask CI
+git push -u origin <issue-id>
+gh pr create --fill                 # PR is the only way in
+gh pr merge --auto --squash         # queue it; it merges itself when green
+bd dolt push                        # step 4's other half still applies
+```
+
+`--auto` hands the PR to the **merge queue**: GitHub rebuilds it against the
+current `main` (which catches the PR that is green alone but broken combined),
+and merges it by squash once every required check passes. Nobody babysits it, and
+nothing merges red.
+
+Required checks — all six of CI, on the PR *and* on the queue's temporary ref:
+`fmt`, `clippy`, `test`, `release`, `Miri`, `No store backend`.
+
+**Adding a required check and adding its `merge_group:` trigger are one change,
+never two.** A queued PR builds on a `gh-readonly-queue/**` ref; a workflow that
+owns a required check but does not list `merge_group:` under `on:` never reports
+there, and the entry stalls until it is ejected. The queue looks broken when it is
+really just waiting. For the same reason, narrow work with a per-step
+`if:`, never a job-level one — a job skipped outright is exactly the check that
+never reports.
+
+Review is a human's call, not a gate: `required_approving_review_count` is 0, so
+the queue is what enforces correctness. Ask for review when the change deserves
+it; don't wait on it to land routine work.
+
 ## What this repo is
 
 wdpkr-core is the **backend-agnostic engine** behind [wdpkr](https://github.com/duckedup/wdpkr): the

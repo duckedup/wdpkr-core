@@ -43,8 +43,15 @@ bd show <id>          # Read issue details + dependencies
 3. Implement with tests — run `just ci` before committing
 4. If the public API changed, build both consumers against this checkout (see below)
 5. `git commit` with emoji-prefix message + `Co-Authored-By` trailer
-6. `git push -u origin <branch>`
-7. Flag for human review
+6. `git push -u origin <issue-id>`
+7. `gh pr create --fill`
+8. `gh pr merge --auto --squash` — hands it to the merge queue, which rebuilds it
+   against current `main` and merges when every required check is green
+9. `bd dolt push` so the issue database follows the code
+
+**`main` is protected — there is no direct push.** The queue is the only way in,
+and it never merges red. See CLAUDE.md § *Landing code* for why `merge_group:`
+matters when you add a required check.
 
 ### Quality gates
 
