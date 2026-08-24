@@ -71,3 +71,10 @@ bd.db
 # They would override fork protection in .git/info/exclude.
 # Config files (metadata.json, config.yaml) are tracked by git by default
 # since no pattern above ignores them.
+
+# JSONL exports are a local viewer/backup artifact, never the shared state.
+# A tracked export is rewritten from each branch's local database, so any branch
+# can silently revert another's closes — nidus hit exactly that. The shared state
+# is the Dolt ref, refs/dolt/data on origin.
+issues.jsonl
+events.jsonl

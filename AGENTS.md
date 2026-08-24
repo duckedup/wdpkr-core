@@ -47,11 +47,18 @@ bd show <id>          # Read issue details + dependencies
 7. `gh pr create --fill`
 8. `gh pr merge --auto --squash` — hands it to the merge queue, which rebuilds it
    against current `main` and merges when every required check is green
-9. `bd dolt push` so the issue database follows the code
+9. `bd close <issue-id>` — nothing auto-closes; a `Closes` line is documentation
+10. `just bd-sync` so the issue database follows the code
 
 **`main` is protected — there is no direct push.** The queue is the only way in,
 and it never merges red. See CLAUDE.md § *Landing code* for why `merge_group:`
 matters when you add a required check.
+
+**Issue state never rides in git.** The Dolt database under `.beads/` is
+gitignored and shared over `refs/dolt/data` on origin, so `bd dolt push` is as
+load-bearing as `git push`. In a fresh clone run `just bd-setup` — never `bd init`
+or `bd bootstrap`, either of which can leave you with an empty tracker whose
+"recovery" force-pushes over everyone's issues.
 
 ### Quality gates
 

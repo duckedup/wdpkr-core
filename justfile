@@ -84,25 +84,22 @@ check-consumer NAME:
 
 # ── Project ────────────────────────────────────────────────────────────────
 
-# Initialize beads issue tracking for this project
-bd-init:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    bd init --reinit-local --prefix wdpkr-core
-    git config beads.role contributor
-    chmod 700 .beads
-    # Point the Dolt remote at this repo's git remote. Without this step
-    # `bd dolt push` — step 4 of the session protocol in CLAUDE.md — silently
-    # skips ("No remote is configured"), and the issue database never leaves the
-    # machine. The transport is a custom git ref, refs/dolt/data on origin, which
-    # is why the URL is the git remote rewritten as git+ssh://.
-    url=$(git remote get-url origin | sed -E 's#^git@([^:]+):#git+ssh://git@\1/#')
-    bd dolt remote add origin "$url"
-    bd dolt push
+# Set up the tracker in a FRESH CLONE: recover the issue database from the repo's
+# own refs/dolt/data and wire the remote. Needs the `dolt` CLI (`brew install
+# dolt`) — bd alone can push but cannot clone. Safe to re-run: an existing
+# database is left alone, because it may hold work that was never pushed.
+#
+# There is deliberately no `bd-init` recipe. `bd init` mints a NEW identity and
+# `bd bootstrap` cannot reach this repo's own refs/dolt/data — either one can
+# leave a fresh clone with an empty tracker whose "recovery" force-pushes nothing
+# over everyone's issues. If you ever see a `bd dolt push --force` prompt, stop.
+bd-setup:
+    ./scripts/bd-setup.sh
 
-# Push the beads issue database to origin's refs/dolt/data (session protocol
-# step 4). Separate from `git push`: the issues live in Dolt, not in the commit.
-bd-push:
+# `git push` does NOT carry issue state — the database rides a separate ref — so
+# this is the tracker half of finishing a session.
+bd-sync:
+    bd dolt pull
     bd dolt push
 
 # Land the current branch: gate locally, push, open a PR, queue it, sync beads.
@@ -123,7 +120,7 @@ pr *ARGS:
     # No --squash: the queue owns the merge method (SQUASH, set in the ruleset),
     # and passing one here just warns that it is being overridden.
     gh pr merge --auto
-    bd dolt push
+    just bd-sync
     echo "queued — it merges itself once the required checks are green."
 
 # Remove all build artifacts
