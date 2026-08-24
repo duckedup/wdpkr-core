@@ -97,6 +97,9 @@ jobs:
             exit 1
           fi
         env:
+          # Org-wide secret on duckedup, already granted to this repo — there is
+          # no repo-level secret to set (check with:
+          # gh api /repos/duckedup/wdpkr-core/actions/organization-secrets).
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   github-release:
