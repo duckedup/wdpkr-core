@@ -85,6 +85,20 @@ Review is a human's call, not a gate: `required_approving_review_count` is 0, so
 the queue is what enforces correctness. Ask for review when the change deserves
 it; don't wait on it to land routine work.
 
+### Beads state rides along in a PR
+
+Creating or closing an issue rewrites `.beads/issues.jsonl`, and there is no
+direct push to land it. **Fold that export into the next feature PR** — the
+pattern nidus follows — rather than opening a PR for the issue tracker alone.
+Two consequences worth knowing:
+
+- `bd dolt push` is *not* blocked by any of this. It writes `refs/dolt/data`, not
+  a branch, so the issue database reaches origin immediately; the committed JSONL
+  is a convenience mirror for fresh clones (`bd init --from-jsonl`) and is allowed
+  to lag by a PR.
+- Don't leave the export uncommitted at the end of a session. If nothing else is
+  in flight, carry it in with whatever lands next, and say so in the handoff.
+
 ## What this repo is
 
 wdpkr-core is the **backend-agnostic engine** behind [wdpkr](https://github.com/duckedup/wdpkr): the
