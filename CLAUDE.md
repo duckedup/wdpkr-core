@@ -168,6 +168,31 @@ just build         # debug build
 
 Rust 1.96+ required (pinned via `rust-toolchain.toml`). Edition 2024.
 
+### Every Rust change bumps the version
+
+**If a PR touches `.rs`, it bumps `version` in `Cargo.toml`.** Not just breaking
+changes — every one. Two repos consume this crate from crates.io, and a change
+they cannot name is a change they cannot adopt: `cargo update` has nothing to
+move to, and "which version has that fix" has no answer.
+
+Docs-only, CI-only, or justfile-only PRs do not need a bump.
+
+Pick the bump the change deserves, pre-1.0:
+
+| Change | Bump |
+|---|---|
+| Anything a consumer must edit code for — a removed or re-shaped public item | minor (`0.2` → `0.3`) |
+| New public API, or internal-only changes and fixes | patch (`0.2.0` → `0.2.1`) |
+
+Landing the bump on `main` is the whole release process: `release.yml` sees the
+new version, publishes to crates.io, tags `v<version>`, and cuts a GitHub
+release. There is no separate publish step, and no way to land a Rust change
+*without* releasing it — which is the point.
+
+Before merging a bump, run `just publish-check` (a `cargo publish --dry-run`);
+it needs a clean tree, so commit first. To hold releases back, set
+`publish = false` in `Cargo.toml` — a one-line kill switch the workflow checks.
+
 ### Checking consumers
 
 A public API change here breaks wdpkr and nidus, and neither breakage shows up
@@ -243,7 +268,7 @@ concrete implementation — but ships **no** implementations beyond the mock in
 - **Trait-first design**: VectorStore, Embedder, Summarizer, Chunker are all traits with mock + real implementations
 - **Config via `env_or` pattern**: `env_or_resolved(KEY, file_or_resolved(file_value, default))` — every field has a known env var, file key, and hardcoded default
 - **Tests are mock-based**: no live API calls in the test suite. Integration tests create temp git repos with fixture source files
-- **Public API is a contract**: two repos depend on it. A breaking change needs a version bump and a `just check-consumer` pass against both
+- **Public API is a contract**: two repos depend on it. A breaking change needs a `just check-consumer` pass against both — see *Every Rust change bumps the version* below
 - **Commit style**: emoji prefix + short description (e.g. `🔍 search orchestration`)
 - **Issue tracking**: `bd` (beads) — run `bd ready` for available work
 - **Branch workflow**: one branch per issue or bundled epic, push for PR review
