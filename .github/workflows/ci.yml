@@ -30,18 +30,16 @@ jobs:
       - run: cargo fmt --all -- --check
 
   # The invariant this whole crate exists for: no concrete store backend in the
-  # dependency tree. A metadata-only check, so it needs no build — its own job,
-  # and it runs `just deps-check` rather than a copy of the logic so the gate and
-  # the local recipe cannot drift.
+  # dependency tree. A metadata-only check, so it needs no build — its own job.
+  # Runs the same script `just deps-check` runs, so the gate and the local recipe
+  # cannot drift, and the runner needs no `just` on PATH.
   deps:
     name: No store backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install just
-        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
-      - run: just deps-check
+      - run: ./scripts/deps-check.sh
 
   # clippy, test, and the release build are separate compiles (check-mode vs
   # build-mode artifacts vs the release profile), so run them as parallel jobs

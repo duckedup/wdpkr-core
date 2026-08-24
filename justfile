@@ -42,19 +42,11 @@ deps:
     cargo tree
 
 # Assert the backend-agnostic invariant: no store backend in the dep tree.
-# Kept as a recipe (and a CI job) because a stray `cargo add` is the one change
-# that silently undoes this crate's reason to exist.
+# The logic lives in scripts/deps-check.sh, shared with the CI job so the gate
+# and this recipe cannot drift — a stray `cargo add` is the one change that
+# silently undoes this crate's reason to exist.
 deps-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    tree=$(cargo tree --prefix none --format '{p}' --all-features)
-    for forbidden in nidus turbopuffer; do
-        if echo "$tree" | grep -qE "^${forbidden} v"; then
-            echo "error: wdpkr-core must not depend on '$forbidden' — it is a store backend." >&2
-            exit 1
-        fi
-    done
-    echo "ok: no store backend in the dependency tree"
+    ./scripts/deps-check.sh
 
 # Run Miri to check for undefined behavior (requires nightly).
 # wdpkr-core is pure Rust apart from tree-sitter's C parsers, so Miri builds the
