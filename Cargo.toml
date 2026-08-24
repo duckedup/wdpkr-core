@@ -8,10 +8,19 @@ repository = "https://github.com/duckedup/wdpkr-core"
 license = "MIT"
 keywords = ["search", "embeddings", "vector", "codebase", "llm"]
 categories = ["development-tools"]
-# Held back until the engine actually lands here (wdpkr-core-6fa.15). The release
-# workflow reads this line and no-ops while it is false, so a push to main cannot
-# claim a version on crates.io for a doc-only stub — a publish is irreversible.
-publish = false
+# Repo-local machinery — issue tracker state, agent instructions, CI, task
+# runner. None of it is useful to a consumer, and .beads/ in particular is
+# working state that would otherwise be frozen into every published version.
+exclude = [
+    ".beads/",
+    ".claude/",
+    ".github/",
+    ".wdpkrignore",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "justfile",
+    "scripts/",
+]
 
 [lib]
 name = "wdpkr_core"

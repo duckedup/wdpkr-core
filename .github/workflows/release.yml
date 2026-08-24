@@ -38,10 +38,10 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      # `publish = false` in Cargo.toml holds the crate back while it is still a
-      # stub (wdpkr-core-6fa.15 flips it). Checked here rather than letting
-      # `cargo publish` refuse, so a held-back crate is a skipped release and not
-      # a red run on every push to main.
+      # Setting `publish = false` in Cargo.toml holds releases back — a one-line
+      # kill switch for when main should not ship. Checked here rather than
+      # letting `cargo publish` refuse, so a held-back crate is a skipped release
+      # and not a red run on every push to main.
       - name: Check if publishing is enabled
         id: enabled
         run: |
