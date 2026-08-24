@@ -52,7 +52,9 @@ bd show <id>          # Read issue details + dependencies
 
 **`main` is protected — there is no direct push.** The queue is the only way in,
 and it never merges red. See CLAUDE.md § *Landing code* for why `merge_group:`
-matters when you add a required check.
+matters when you add **or retire** a required check — the ordering is opposite in
+each direction, and getting it backwards stalls every queue entry. `Miri` is not
+a required check: it runs on PRs, advisory only, and skips the queue.
 
 **Issue state never rides in git.** The Dolt database under `.beads/` is
 gitignored and shared over `refs/dolt/data` on origin, so `bd dolt push` is as

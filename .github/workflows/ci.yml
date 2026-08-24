@@ -4,6 +4,11 @@ name: CI
 # temporary gh-readonly-queue ref, and a required check that does not run there
 # never reports, so the entry stalls until it is ejected. Adding a required check
 # and adding its merge_group trigger are one change, never two.
+#
+# The rule runs in reverse too. Miri is deliberately NOT a required check (see
+# the `miri` job), so it skips merge_group entirely — a queue build has nothing
+# waiting on it. Dropping the requirement and skipping the queue run are one
+# change: skip the run while it is still required and every entry stalls.
 on:
   pull_request:
   push:
@@ -90,9 +95,20 @@ jobs:
 
       - run: ${{ matrix.command }}
 
+  # Miri is advisory, not a gate. It interprets MIR, so its runtime scales with
+  # the test suite: on the engine-extraction PR it took 15m11s while every other
+  # check reported in under 45s, holding the queue entry blocked the whole time.
+  # For a crate whose only FFI is tree-sitter's C parsers — and whose FFI-touching
+  # tests are `#[cfg_attr(miri, ignore)]` anyway — that is a poor trade against
+  # queue latency, so it is not in the ruleset's required checks.
+  #
+  # A job-level `if:` is correct here *because* it is not required: an outright
+  # skipped job never reports, which is exactly what stalls a queue entry waiting
+  # on it. Never add this `if:` to a job that owns a required check.
   miri:
     name: Miri
     runs-on: ubuntu-latest
+    if: github.event_name != 'merge_group'
     steps:
       - uses: actions/checkout@v6
 
