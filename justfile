@@ -105,6 +105,27 @@ bd-init:
 bd-push:
     bd dolt push
 
+# Land the current branch: gate locally, push, open a PR, queue it, sync beads.
+# `main` is protected — the merge queue is the only way in, and it rebuilds the
+# PR against current main before merging, so nothing lands red. Run from a
+# feature branch (named for its issue); refuses on main.
+pr *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    branch=$(git branch --show-current)
+    if [ "$branch" = "main" ]; then
+        echo "error: on main — branch first (git checkout -b <issue-id>)." >&2
+        exit 1
+    fi
+    just ci
+    git push -u origin "$branch"
+    gh pr create --fill {{ ARGS }}
+    # No --squash: the queue owns the merge method (SQUASH, set in the ruleset),
+    # and passing one here just warns that it is being overridden.
+    gh pr merge --auto
+    bd dolt push
+    echo "queued — it merges itself once the required checks are green."
+
 # Remove all build artifacts
 clean:
     cargo clean
