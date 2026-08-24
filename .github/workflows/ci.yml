@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Incremental artifacts are large and single-run-only — they just bloat the
+  # cache. CI builds clean each run, so disable incremental compilation.
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  # Formatting is a no-compile check — keep it as its own fast job.
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  # The invariant this whole crate exists for: no concrete store backend in the
+  # dependency tree. A metadata-only check, so it needs no build — its own job,
+  # and it runs `just deps-check` rather than a copy of the logic so the gate and
+  # the local recipe cannot drift.
+  deps:
+    name: No store backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install just
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+      - run: just deps-check
+
+  # clippy, test, and the release build are separate compiles (check-mode vs
+  # build-mode artifacts vs the release profile), so run them as parallel jobs
+  # instead of one sequential job. Each keeps its own cache slot.
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: clippy
+            components: clippy
+            command: cargo clippy --all-targets --all-features -- -D warnings
+          - name: test
+            components: ""
+            command: cargo test --all-features
+          - name: release
+            components: ""
+            command: cargo build --release
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: ${{ matrix.components }}
+
+      # First-party cache with restore-keys. A Cargo.lock change — including a
+      # version bump on release — misses the exact key but falls back to the
+      # newest prior cache, so cargo reuses the unchanged deps and only the
+      # workspace crate recompiles. registry/src is omitted (re-extracted from
+      # registry/cache) to keep the cache small.
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.name }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.name }}-
+
+      - run: ${{ matrix.command }}
+
+  miri:
+    name: Miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Miri
+        run: |
+          rustup toolchain install nightly --component miri
+          rustup override set nightly
+          cargo miri setup
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-miri-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-miri-
+
+      - name: Test with Miri
+        env:
+          MIRIFLAGS: "-Zmiri-disable-isolation -Zmiri-permissive-provenance -Zmiri-ignore-leaks"
+        # Pure Rust apart from tree-sitter's C parsers, so Miri builds the crate.
+        # Tests needing OS-level FFI carry #[cfg_attr(miri, ignore)].
+        run: cargo miri test

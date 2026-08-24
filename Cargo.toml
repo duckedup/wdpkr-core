@@ -1,0 +1,48 @@
+[package]
+name = "wdpkr-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+description = "Core indexing and retrieval engine behind wdpkr: repo walking, tree-sitter chunking, LLM summarization, embedding, and the VectorStore abstraction — backend-agnostic."
+repository = "https://github.com/duckedup/wdpkr-core"
+license = "MIT"
+keywords = ["search", "embeddings", "vector", "codebase", "llm"]
+categories = ["development-tools"]
+
+[lib]
+name = "wdpkr_core"
+path = "src/lib.rs"
+
+# No [[bin]]: wdpkr-core is a library. The `wdpkr` CLI lives in the wdpkr repo,
+# which glues this crate to its store backends (Turbopuffer, nidus).
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+blake3 = "1"
+# `clap` for derives only (ValueEnum on public option enums) — no CLI parsing here.
+clap = { version = "4", features = ["derive"] }
+dirs = "6"
+futures-util = { version = "0.3.33", default-features = false, features = ["std"] }
+globset = "0.4"
+ignore = "0.4"
+linear-mg = "0.2"
+owo-colors = { version = "4", features = ["supports-colors"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "process", "io-util", "time"] }
+tree-sitter = "0.24"
+tree-sitter-language = "0.1"
+tree-sitter-c-sharp = "0.23"
+tree-sitter-cpp = "0.23"
+tree-sitter-go = "0.23"
+tree-sitter-java = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-rust = "0.23"
+tree-sitter-typescript = "0.23"
+
+[dev-dependencies]
+serial_test = "3"
